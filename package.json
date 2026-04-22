@@ -1,0 +1,14 @@
+{
+  "name": "miconjunto",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Raíz del monorepo: la app Next.js está en ./app (requerido para Nixpacks/Dokploy cuando el contexto es el repo).",
+  "scripts": {
+    "build": "cd app && npm ci && npm run build",
+    "start": "cd app && npm start",
+    "lint": "cd app && npm run lint"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
