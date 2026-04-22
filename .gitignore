@@ -1,0 +1,25 @@
+# Next.js (carpeta app/)
+app/node_modules/
+app/.next/
+app/out/
+app/.vercel
+app/coverage/
+app/*.tsbuildinfo
+app/npm-debug.log*
+app/yarn-error.log*
+app/.pnpm-debug.log*
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.pem
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
