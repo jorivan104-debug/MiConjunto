@@ -133,3 +133,85 @@ def database_target_label(url: str) -> str:
     db = (parsed.path or "/").lstrip("/") or "(sin base de datos)"
     user = parsed.username or "(sin usuario)"
     return f"postgresql://{user}:***@{host}:{port}/{db}"
+
+
+def postgres_connection_params(
+    database_url: str,
+    *,
+    postgres_host: str = "",
+    postgres_user: str = "",
+    postgres_password: str = "",
+    postgres_db: str = "",
+    postgres_port: str = "5432",
+) -> dict[str, str | int]:
+    """Parámetros TCP explícitos para psycopg2 (evita sockets Unix en Dokploy)."""
+    if postgres_host.strip():
+        host = postgres_host.lstrip("@").strip()
+        if not host:
+            raise DatabaseConfigError("POSTGRES_HOST está vacío.")
+        return {
+            "host": host,
+            "port": int(postgres_port or 5432),
+            "user": postgres_user or "postgres",
+            "password": postgres_password or "",
+            "dbname": postgres_db or "miconjunto",
+        }
+
+    raw = (database_url or "").strip()
+
+    if raw.startswith("@") and "://" not in raw:
+        host_part = raw.lstrip("@").strip()
+        host = host_part.split(":")[0]
+        port = int(host_part.split(":")[1]) if ":" in host_part else int(postgres_port or 5432)
+        return {
+            "host": host,
+            "port": port,
+            "user": postgres_user or "postgres",
+            "password": postgres_password or "",
+            "dbname": postgres_db or "miconjunto",
+        }
+
+    url = resolve_database_url(
+        database_url,
+        postgres_host=postgres_host,
+        postgres_user=postgres_user,
+        postgres_password=postgres_password,
+        postgres_db=postgres_db,
+        postgres_port=postgres_port,
+    )
+    parsed = urlparse(url)
+    user = unquote(parsed.username or "postgres")
+    password = unquote(parsed.password) if parsed.password is not None else ""
+    host = (parsed.hostname or "").lstrip("@")
+    port = int(parsed.port or postgres_port or 5432)
+    dbname = (parsed.path or "/").lstrip("/") or "miconjunto"
+
+    if password.startswith("@"):
+        host = password.lstrip("@").split(":")[0]
+        password = ""
+    elif not host and "@" in (parsed.netloc or ""):
+        _, hostport = parsed.netloc.rsplit("@", 1)
+        host = hostport.split(":")[0].lstrip("@")
+        if ":" in hostport:
+            port = int(hostport.split(":")[1])
+
+    if not host:
+        raise DatabaseConfigError(
+            "No se pudo determinar POSTGRES_HOST. En Dokploy define POSTGRES_HOST, "
+            "POSTGRES_USER, POSTGRES_PASSWORD y POSTGRES_DB."
+        )
+
+    return {
+        "host": host,
+        "port": port,
+        "user": user,
+        "password": password,
+        "dbname": dbname,
+    }
+
+
+def connection_target_label(params: dict[str, str | int]) -> str:
+    return (
+        f"postgresql://{params['user']}:***@{params['host']}:"
+        f"{params['port']}/{params['dbname']}"
+    )

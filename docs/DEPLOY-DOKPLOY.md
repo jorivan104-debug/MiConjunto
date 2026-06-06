@@ -87,7 +87,7 @@ En **Environment**, usa **una** de estas dos formas:
 DATABASE_URL=postgresql://postgres:TU_CLAVE@miconjunto-dbmconj-bikas5:5432/miconjunto
 ```
 
-**Opción B — variables separadas (más fácil en Dokploy):**
+**Opción B — variables separadas (recomendada en Dokploy):**
 
 ```env
 POSTGRES_HOST=miconjunto-dbmconj-bikas5
@@ -97,9 +97,17 @@ POSTGRES_DB=miconjunto
 POSTGRES_PORT=5432
 ```
 
-No uses solo `@miconjunto-dbmconj-bikas5` como `DATABASE_URL` — eso provoca el error de socket Unix.
+Si Dokploy inyecta automáticamente una `DATABASE_URL` incorrecta (p. ej. `@miconjunto-dbmconj-bikas5`), **elimínala** y usa solo las variables `POSTGRES_*` de arriba.
 
-**Importante:** la contraseña de PostgreSQL es obligatoria. Si usas la opción B, define `POSTGRES_PASSWORD` con la clave que muestra Dokploy en el servicio de base de datos.
+**Importante:** `POSTGRES_PASSWORD` es obligatoria (cópiala del servicio PostgreSQL en Dokploy).
+
+Tras el redeploy, en logs debe aparecer:
+
+```text
+PostgreSQL TCP target: postgresql://postgres:***@miconjunto-dbmconj-bikas5:5432/miconjunto
+```
+
+Si el host sigue mostrando `@miconjunto-...`, las variables no se guardaron correctamente.
 
 También necesitas:
 
