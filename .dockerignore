@@ -1,0 +1,15 @@
+.git
+.github
+frontend
+docs
+img
+Sounds
+*.md
+.env
+.env.*
+**/__pycache__
+**/.pytest_cache
+**/*.db
+**/node_modules
+**/.venv
+**/venv

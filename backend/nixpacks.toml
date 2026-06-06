@@ -1,0 +1,11 @@
+# Solo si en Dokploy el directorio raíz de build es "backend" y usas Nixpacks.
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["python311", "gcc", "postgresql"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
