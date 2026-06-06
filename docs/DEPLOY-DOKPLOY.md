@@ -133,13 +133,23 @@ En Dokploy, vincula la base de datos al backend (**Connect to Application** / mi
 | **Build context** | `frontend/web` |
 | **Port** | `80` |
 
-### Build argument (obligatorio)
+### Variable de entorno (obligatoria)
 
 ```env
-VITE_API_URL=https://api.tudominio.com
+BACKEND_URL=https://api.tudominio.com
 ```
 
-Sin esto, el frontend intentará llamar a `/api` en el mismo dominio y fallará.
+Nginx del frontend hace proxy de `/api` y `/uploads` hacia el backend. Sin `BACKEND_URL` el login devuelve **405**.
+
+En el **backend**, incluye el dominio del frontend en CORS:
+
+```env
+CORS_ORIGINS=https://miconjunto.app-sprint.com
+```
+
+*(usa tu dominio real del frontend)*
+
+**Alternativa:** build con `VITE_API_URL=https://api.tudominio.com/api` si prefieres llamar al API directamente (sin proxy).
 
 ---
 

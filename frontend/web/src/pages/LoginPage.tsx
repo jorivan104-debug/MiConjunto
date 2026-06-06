@@ -53,7 +53,7 @@ export default function LoginPage() {
         className="w-full max-w-md"
       >
         <div className="flex justify-center mb-8">
-          <BrandLogo variant="full" className="h-32 md:h-40" />
+          <BrandLogo variant="full" className="h-64 md:h-80" />
         </div>
         <div className="rounded-3xl bg-white shadow-card border border-ink-100 p-7 md:p-8">
           <h1 className="text-2xl font-bold text-center text-ink-900">Hola de nuevo</h1>
