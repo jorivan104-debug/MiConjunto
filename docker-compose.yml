@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: miconjunto-postgres
+    environment:
+      POSTGRES_USER: miconjunto
+      POSTGRES_PASSWORD: miconjunto
+      POSTGRES_DB: miconjunto
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U miconjunto"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: miconjunto-backend
+    environment:
+      DATABASE_URL: postgresql://miconjunto:miconjunto@postgres:5432/miconjunto
+      APP_ENV: production
+      SECRET_KEY: change-me-in-production-please-use-a-long-random-string
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BOOTSTRAP_ADMIN_PASSWORD: admin
+      BOOTSTRAP_ADMIN_EMAIL: admin@miconjunto.app
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+
+  web:
+    build:
+      context: ./frontend/web
+    container_name: miconjunto-web
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:

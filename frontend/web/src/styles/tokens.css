@@ -1,0 +1,55 @@
+/* Mi Conjunto — Design Tokens
+ * Based exclusively on the logo color palette.
+ * Light theme only; light theme is the product default.
+ */
+
+:root {
+  /* Brand colors */
+  --color-green: #39A935;
+  --color-blue: #1F66D1;
+  --color-red: #FF4040;
+  --color-yellow: #F4B400;
+  --color-white: #FFFFFF;
+
+  /* Soft brand surfaces */
+  --color-green-light: #EAF7E8;
+  --color-blue-light: #EAF2FD;
+  --color-red-light: #FFE9E9;
+  --color-yellow-light: #FFF4D6;
+
+  /* Surfaces */
+  --bg-page: #FFFFFF;
+  --bg-subtle: #F8FAFC;
+  --bg-muted: #F1F5F9;
+
+  /* Ink (text) */
+  --ink-900: #0F172A;
+  --ink-800: #1E293B;
+  --ink-700: #334155;
+  --ink-600: #475569;
+  --ink-500: #64748B;
+  --ink-400: #94A3B8;
+  --ink-300: #CBD5E1;
+
+  /* Borders */
+  --border-default: #E2E8F0;
+  --border-subtle: #F1F5F9;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 4px 14px rgba(15, 23, 42, 0.06);
+  --shadow-lift: 0 10px 30px rgba(15, 23, 42, 0.08);
+
+  /* Motion */
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
