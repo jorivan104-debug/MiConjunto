@@ -19,7 +19,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY backend/ .
 
-RUN chmod +x scripts/docker-entrypoint.sh
+RUN mkdir -p uploads && chmod +x scripts/docker-entrypoint.sh
 
 EXPOSE 8000
 

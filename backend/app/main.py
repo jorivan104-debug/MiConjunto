@@ -55,6 +55,8 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+# StaticFiles exige que el directorio exista al importar el módulo (antes del lifespan).
+Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
