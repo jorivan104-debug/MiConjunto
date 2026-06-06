@@ -8,8 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.core.database import Base, engine
 from app.core.seed import run_initial_seed
+from app.core.startup import init_database
 
 # Importar todos los modelos para registrarlos con Base
 from app import models  # noqa: F401
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Crear tablas (en producción usar Alembic; aceptable como fallback en dev y bootstrap inicial)
-    Base.metadata.create_all(bind=engine)
+    logger.info("Starting %s (env=%s)", settings.APP_NAME, settings.APP_ENV)
+    init_database()
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(exist_ok=True, parents=True)
     try:

@@ -19,9 +19,13 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY backend/ .
 
+RUN chmod +x scripts/docker-entrypoint.sh
+
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD curl -f http://127.0.0.1:8000/health || exit 1
+ENV PORT=8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
+    CMD sh -c 'curl -f http://127.0.0.1:${PORT:-8000}/health || exit 1'
+
+CMD ["scripts/docker-entrypoint.sh"]

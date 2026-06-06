@@ -66,7 +66,29 @@ ALLOW_PUBLIC_REGISTRATION=false
 - `https://api.tudominio.com/health` → `{"status":"healthy"}`
 - `https://api.tudominio.com/docs` → Swagger
 
+### Bad Gateway / contenedor `Exited (1)`
+
+Revisa los **logs** del contenedor en Dokploy. Causas frecuentes:
+
+1. **Puerto incorrecto** — en Dokploy el puerto del contenedor debe ser `8000` (coincide con `PORT=8000`).
+2. **`DATABASE_URL` mal configurada** — usa el hostname **interno** de PostgreSQL en Dokploy, no `localhost`.
+   - Ejemplo: `postgresql://usuario:clave@miconjunto-db-xxxxx:5432/miconjunto`
+   - También funciona si Dokploy entrega `postgres://...` (se normaliza automáticamente).
+3. **`CORS_ORIGINS` mal formateado** — válido como JSON o lista separada por comas:
+   - `["https://app.tudominio.com"]`
+   - `https://app.tudominio.com`
+4. **PostgreSQL aún no listo** — el backend reintenta hasta ~60 s; si la BD no existe o la clave es incorrecta, seguirá fallando.
+
+En **Environment**, confirma al menos:
+
+```env
+DATABASE_URL=postgresql://USUARIO:CLAVE@HOST-INTERNO-POSTGRES:5432/NOMBRE_BD
+APP_ENV=production
+SECRET_KEY=clave-larga-aleatoria
+```
+
 ---
+
 
 ## 3. Frontend web
 
