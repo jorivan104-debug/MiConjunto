@@ -1,7 +1,11 @@
 """Construcción y normalización de DATABASE_URL (Dokploy / Docker)."""
 from __future__ import annotations
 
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus, unquote, urlparse
+
+
+class DatabaseConfigError(ValueError):
+    """DATABASE_URL o variables POSTGRES_* inválidas."""
 
 
 def build_postgres_url(
@@ -12,10 +16,52 @@ def build_postgres_url(
     database: str = "postgres",
 ) -> str:
     clean_host = host.lstrip("@").strip()
-    return (
-        f"postgresql://{quote_plus(user)}:{quote_plus(password)}"
-        f"@{clean_host}:{port}/{database}"
-    )
+    if not clean_host:
+        raise DatabaseConfigError(
+            "Host de PostgreSQL vacío. Configura POSTGRES_HOST o una DATABASE_URL completa."
+        )
+
+    user_q = quote_plus(user or "postgres")
+    port_s = str(port or 5432)
+    db = (database or "postgres").strip("/") or "postgres"
+
+    # Nunca generar postgres:@host — con contraseña vacía el @ confunde al parser.
+    if password:
+        creds = f"{user_q}:{quote_plus(password)}"
+    else:
+        creds = user_q
+
+    return f"postgresql://{creds}@{clean_host}:{port_s}/{db}"
+
+
+def sanitize_postgres_url(url: str) -> str:
+    """Reconstruye la URL para evitar hosts con @ por parseo incorrecto."""
+    if not url.startswith("postgresql"):
+        return url
+
+    parsed = urlparse(url)
+    user = unquote(parsed.username or "postgres")
+    password = unquote(parsed.password) if parsed.password is not None else ""
+    host = parsed.hostname or ""
+    port = parsed.port or 5432
+    database = (parsed.path or "/postgres").lstrip("/") or "postgres"
+
+    # Caso postgres:@miconjunto-dbmconj-bikas5 — el host quedó en "password"
+    if password.startswith("@"):
+        host = password.lstrip("@").split(":")[0]
+        password = ""
+    elif not host and "@" in parsed.netloc:
+        userinfo, hostport = parsed.netloc.rsplit("@", 1)
+        user = userinfo.split(":", 1)[0] if userinfo else user
+        if ":" in userinfo:
+            password = userinfo.split(":", 1)[1]
+        else:
+            password = ""
+        host = hostport.split(":")[0].lstrip("@")
+        if ":" in hostport:
+            port = hostport.split(":")[1]
+
+    return build_postgres_url(user, password, host, port, database)
 
 
 def resolve_database_url(
@@ -75,7 +121,7 @@ def resolve_database_url(
             postgres_db or "miconjunto",
         )
 
-    return raw
+    return sanitize_postgres_url(raw)
 
 
 def database_target_label(url: str) -> str:

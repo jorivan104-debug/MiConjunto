@@ -1,4 +1,24 @@
-from app.core.db_url import database_target_label, resolve_database_url
+import pytest
+
+from app.core.db_url import (
+    DatabaseConfigError,
+    build_postgres_url,
+    database_target_label,
+    resolve_database_url,
+    sanitize_postgres_url,
+)
+
+
+def test_build_postgres_url_without_password_avoids_ambiguous_at():
+    url = build_postgres_url("postgres", "", "miconjunto-dbmconj-bikas5", 5432, "miconjunto")
+    assert url == "postgresql://postgres@miconjunto-dbmconj-bikas5:5432/miconjunto"
+
+
+def test_sanitize_postgres_url_recovers_host_from_password_field():
+    url = sanitize_postgres_url(
+        "postgresql://postgres:@miconjunto-dbmconj-bikas5:5432/miconjunto"
+    )
+    assert url == "postgresql://postgres@miconjunto-dbmconj-bikas5:5432/miconjunto"
 
 
 def test_resolve_dokploy_host_with_at_prefix():
@@ -25,3 +45,8 @@ def test_resolve_postgres_host_env_takes_priority():
 def test_database_target_label_masks_password():
     label = database_target_label("postgresql://user:pass@host:5432/db")
     assert "user:***@host:5432/db" in label
+
+
+def test_build_postgres_url_requires_host():
+    with pytest.raises(DatabaseConfigError):
+        build_postgres_url("postgres", "pw", "", 5432, "db")

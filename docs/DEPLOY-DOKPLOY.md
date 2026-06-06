@@ -99,6 +99,8 @@ POSTGRES_PORT=5432
 
 No uses solo `@miconjunto-dbmconj-bikas5` como `DATABASE_URL` — eso provoca el error de socket Unix.
 
+**Importante:** la contraseña de PostgreSQL es obligatoria. Si usas la opción B, define `POSTGRES_PASSWORD` con la clave que muestra Dokploy en el servicio de base de datos.
+
 También necesitas:
 
 ```env
