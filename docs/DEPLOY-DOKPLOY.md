@@ -79,13 +79,34 @@ Revisa los **logs** del contenedor en Dokploy. Causas frecuentes:
    - `https://app.tudominio.com`
 4. **PostgreSQL aún no listo** — el backend reintenta hasta ~60 s; si la BD no existe o la clave es incorrecta, seguirá fallando.
 
-En **Environment**, confirma al menos:
+En **Environment**, usa **una** de estas dos formas:
+
+**Opción A — URL completa (recomendada):**
 
 ```env
-DATABASE_URL=postgresql://USUARIO:CLAVE@HOST-INTERNO-POSTGRES:5432/NOMBRE_BD
+DATABASE_URL=postgresql://postgres:TU_CLAVE@miconjunto-dbmconj-bikas5:5432/miconjunto
+```
+
+**Opción B — variables separadas (más fácil en Dokploy):**
+
+```env
+POSTGRES_HOST=miconjunto-dbmconj-bikas5
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=TU_CLAVE
+POSTGRES_DB=miconjunto
+POSTGRES_PORT=5432
+```
+
+No uses solo `@miconjunto-dbmconj-bikas5` como `DATABASE_URL` — eso provoca el error de socket Unix.
+
+También necesitas:
+
+```env
 APP_ENV=production
 SECRET_KEY=clave-larga-aleatoria
 ```
+
+En Dokploy, vincula la base de datos al backend (**Connect to Application** / misma red Docker).
 
 ---
 

@@ -4,13 +4,16 @@ import time
 
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.db_url import database_target_label
 
 logger = logging.getLogger(__name__)
 
 
-def init_database(max_attempts: int = 30, delay_seconds: float = 2.0) -> None:
+def init_database(max_attempts: int = 45, delay_seconds: float = 2.0) -> None:
     """Espera a PostgreSQL y crea tablas si no existen."""
+    logger.info("Connecting to database: %s", database_target_label(settings.DATABASE_URL))
     last_error: Exception | None = None
 
     for attempt in range(1, max_attempts + 1):

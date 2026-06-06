@@ -1,8 +1,10 @@
 import json
 from typing import Any, List
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.core.db_url import resolve_database_url
 
 
 class Settings(BaseSettings):
@@ -13,6 +15,12 @@ class Settings(BaseSettings):
     # Database
     # Default: SQLite for dev. Override with DATABASE_URL=postgresql://... in production.
     DATABASE_URL: str = "sqlite:///./miconjunto.db"
+    # Alternativa en Dokploy (más clara que armar la URL a mano):
+    POSTGRES_HOST: str = ""
+    POSTGRES_USER: str = ""
+    POSTGRES_PASSWORD: str = ""
+    POSTGRES_DB: str = ""
+    POSTGRES_PORT: str = "5432"
 
     # JWT
     SECRET_KEY: str = "change-me-in-production-please-use-long-random-string"
@@ -50,12 +58,17 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("DATABASE_URL", mode="before")
-    @classmethod
-    def normalize_database_url(cls, value: Any) -> Any:
-        if isinstance(value, str) and value.startswith("postgres://"):
-            return value.replace("postgres://", "postgresql://", 1)
-        return value
+    @model_validator(mode="after")
+    def assemble_database_url(self) -> "Settings":
+        self.DATABASE_URL = resolve_database_url(
+            self.DATABASE_URL,
+            postgres_host=self.POSTGRES_HOST,
+            postgres_user=self.POSTGRES_USER,
+            postgres_password=self.POSTGRES_PASSWORD,
+            postgres_db=self.POSTGRES_DB,
+            postgres_port=self.POSTGRES_PORT,
+        )
+        return self
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
