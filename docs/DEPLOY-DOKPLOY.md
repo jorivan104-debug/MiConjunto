@@ -135,21 +135,31 @@ En Dokploy, vincula la base de datos al backend (**Connect to Application** / mi
 
 ### Variable de entorno (obligatoria)
 
+**Opción A — URL pública del API (HTTPS):**
+
 ```env
 BACKEND_URL=https://api.tudominio.com
 ```
 
-Nginx del frontend hace proxy de `/api` y `/uploads` hacia el backend. Sin `BACKEND_URL` el login devuelve **405**.
+**Opción B — red interna Dokploy (recomendada si el 502 persiste):**
 
-En el **backend**, incluye el dominio del frontend en CORS:
+En el servicio **backend** → General, copia el nombre interno del contenedor y usa:
+
+```env
+BACKEND_URL=http://miconjunto-bend-egwsrw:8000
+```
+
+(sustituye por el nombre real de tu servicio backend; sin barra final)
+
+Nginx hace proxy de `/api` y `/uploads`. Sin `BACKEND_URL` → **405**. Si el proxy no alcanza el API público desde el contenedor → **502**.
+
+En el **backend**, CORS con el dominio del frontend:
 
 ```env
 CORS_ORIGINS=https://miconjunto.app-sprint.com
 ```
 
-*(usa tu dominio real del frontend)*
-
-**Alternativa:** build con `VITE_API_URL=https://api.tudominio.com/api` si prefieres llamar al API directamente (sin proxy).
+**Alternativa:** build con `VITE_API_URL=https://api.tudominio.com/api` (sin proxy nginx).
 
 ---
 

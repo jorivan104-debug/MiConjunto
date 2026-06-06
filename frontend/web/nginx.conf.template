@@ -4,20 +4,33 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # Proxy al backend FastAPI (BACKEND_URL sin barra final, ej. https://api.tudominio.com)
+    # DNS embebido de Docker (resolución en tiempo de request)
+    resolver 127.0.0.11 valid=30s ipv6=off;
+
+    # Proxy al backend FastAPI
+    # BACKEND_URL = origen sin barra final, ej. https://api.tudominio.com
+    #            o red interna Dokploy: http://miconjunto-bend-xxxxx:8000
     location /api/ {
-        proxy_pass ${BACKEND_URL}/api/;
+        set $backend_upstream "${BACKEND_URL}";
+        proxy_pass $backend_upstream$request_uri;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_ssl_server_name on;
+        proxy_ssl_verify off;
+        proxy_set_header Host $proxy_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 60s;
     }
 
     location /uploads/ {
-        proxy_pass ${BACKEND_URL}/uploads/;
+        set $backend_upstream "${BACKEND_URL}";
+        proxy_pass $backend_upstream$request_uri;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_ssl_server_name on;
+        proxy_ssl_verify off;
+        proxy_set_header Host $proxy_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
