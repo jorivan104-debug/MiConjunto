@@ -1,0 +1,5 @@
+# Nixpacks (Dokploy): forzar Node 20; el plan se genera desde package.json en la raíz.
+# Build y start delegan en ./app (scripts en package.json raíz).
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"
