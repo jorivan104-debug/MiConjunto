@@ -1,2 +1,0 @@
-# Backend Application Package
-

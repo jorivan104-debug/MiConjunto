@@ -1,0 +1,474 @@
+// Modelo de datos de Mi Conjunto — gestión de propiedad horizontal (Ley 675 de 2001).
+// Todo dato de negocio cuelga de una Copropiedad (multiempresa por copropiedadId).
+// Los valores en dinero están en pesos colombianos (COP).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoCopropiedad {
+  RESIDENCIAL
+  COMERCIAL
+  MIXTA
+}
+
+enum Rol {
+  ADMINISTRADOR
+  ASISTENTE
+  CONTADOR
+  CONSEJO
+  REVISOR_FISCAL
+  PROPIETARIO
+  RESIDENTE
+  PORTERIA
+}
+
+enum TipoUnidad {
+  APARTAMENTO
+  CASA
+  LOCAL
+  OFICINA
+  PARQUEADERO
+  DEPOSITO
+}
+
+enum VinculoUnidad {
+  PROPIETARIO
+  RESIDENTE
+  ARRENDATARIO
+}
+
+enum TipoConcepto {
+  ORDINARIA
+  FONDO_IMPREVISTOS
+  EXTRAORDINARIA
+  MULTA
+  RESERVA
+  INTERES_MORA
+  OTRO
+}
+
+enum EstadoCargo {
+  PENDIENTE
+  PAGADO
+  ANULADO
+}
+
+enum MedioPago {
+  PSE
+  TARJETA
+  CONSIGNACION
+  TRANSFERENCIA
+  EFECTIVO
+  OTRO
+}
+
+enum EstadoPago {
+  PENDIENTE
+  CONFIRMADO
+  RECHAZADO
+  ANULADO
+}
+
+enum Naturaleza {
+  DEBITO
+  CREDITO
+}
+
+enum OrigenAsiento {
+  CARGO
+  PAGO
+  ANULACION
+  MANUAL
+}
+
+enum TipoPqrs {
+  PETICION
+  QUEJA
+  RECLAMO
+  SUGERENCIA
+  DANO
+}
+
+enum EstadoPqrs {
+  RADICADA
+  EN_PROCESO
+  RESUELTA
+  CERRADA
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CANCELADA
+}
+
+enum Visibilidad {
+  TODOS
+  CONSEJO
+  ADMINISTRACION
+}
+
+model Usuario {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String
+  nombre               String
+  celular              String?
+  tipoDocumento        String?
+  numeroDocumento      String?
+  esSuperAdmin         Boolean   @default(false)
+  debeCambiarPassword  Boolean   @default(false)
+  // Ley 1581 de 2012: autorización previa, expresa e informada
+  autorizacionDatosAt  DateTime?
+  autorizacionVersion  String?
+  activo               Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  membresias      Membresia[]
+  vinculos        UnidadPersona[]
+  pqrs            Pqrs[]          @relation("PqrsAutor")
+  pqrsAsignadas   Pqrs[]          @relation("PqrsAsignado")
+  comentariosPqrs PqrsComentario[]
+  reservas        Reserva[]
+  lecturas        LecturaComunicado[]
+  comunicados     Comunicado[]
+}
+
+model Copropiedad {
+  id                  String          @id @default(cuid())
+  nit                 String          @unique
+  nombre              String
+  tipo                TipoCopropiedad @default(RESIDENCIAL)
+  direccion           String?
+  ciudad              String?
+  responsableIva      Boolean         @default(false)
+  // Tasa de mora mensual decidida por la asamblea (si es menor al tope legal). Null = tope legal.
+  tasaMoraMensual     Decimal?        @db.Decimal(8, 6)
+  diaVencimiento      Int             @default(10)
+  createdAt           DateTime        @default(now())
+
+  membresias    Membresia[]
+  torres        Torre[]
+  unidades      Unidad[]
+  presupuestos  Presupuesto[]
+  conceptos     ConceptoCobro[]
+  cargos        Cargo[]
+  pagos         Pago[]
+  cuentas       CuentaContable[]
+  asientos      Asiento[]
+  comunicados   Comunicado[]
+  pqrs          Pqrs[]
+  zonas         ZonaComun[]
+  documentos    Documento[]
+  auditoria     Auditoria[]
+}
+
+model Membresia {
+  id            String      @id @default(cuid())
+  usuarioId     String
+  copropiedadId String
+  rol           Rol
+  createdAt     DateTime    @default(now())
+  usuario       Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, copropiedadId, rol])
+}
+
+model Torre {
+  id            String      @id @default(cuid())
+  copropiedadId String
+  nombre        String
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  unidades      Unidad[]
+
+  @@unique([copropiedadId, nombre])
+}
+
+model Unidad {
+  id            String      @id @default(cuid())
+  copropiedadId String
+  torreId       String?
+  tipo          TipoUnidad  @default(APARTAMENTO)
+  numero        String
+  areaPrivada   Decimal?    @db.Decimal(10, 2)
+  // Coeficiente de copropiedad (art. 3, 25-27 Ley 675). Se guarda como fracción: 0.0125 = 1,25 %
+  coeficiente   Decimal     @db.Decimal(12, 10)
+  createdAt     DateTime    @default(now())
+
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  torre         Torre?      @relation(fields: [torreId], references: [id])
+  personas      UnidadPersona[]
+  cargos        Cargo[]
+  pagos         Pago[]
+  reservas      Reserva[]
+  pqrs          Pqrs[]
+
+  @@unique([copropiedadId, torreId, numero])
+}
+
+model UnidadPersona {
+  id               String        @id @default(cuid())
+  unidadId         String
+  usuarioId        String
+  vinculo          VinculoUnidad
+  responsablePago  Boolean       @default(false)
+  desde            DateTime      @default(now())
+  hasta            DateTime?
+  unidad           Unidad        @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  usuario          Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([unidadId, usuarioId, vinculo])
+}
+
+model Presupuesto {
+  id                    String      @id @default(cuid())
+  copropiedadId         String
+  anio                  Int
+  totalAnual            Decimal     @db.Decimal(16, 2)
+  // Art. 35 Ley 675: mínimo 1 % del presupuesto anual
+  fondoImprevistosPct   Decimal     @default(1) @db.Decimal(5, 2)
+  actaAprobacion        String?
+  createdAt             DateTime    @default(now())
+  copropiedad           Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+
+  @@unique([copropiedadId, anio])
+}
+
+model ConceptoCobro {
+  id            String       @id @default(cuid())
+  copropiedadId String
+  nombre        String
+  tipo          TipoConcepto
+  gravadoIva    Boolean      @default(false)
+  ivaPct        Decimal      @default(0) @db.Decimal(5, 2)
+  cuentaIngreso String
+  activo        Boolean      @default(true)
+  copropiedad   Copropiedad  @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  cargos        Cargo[]
+
+  @@unique([copropiedadId, tipo, nombre])
+}
+
+model Cargo {
+  id            String        @id @default(cuid())
+  copropiedadId String
+  unidadId      String
+  conceptoId    String
+  periodo       String        // AAAA-MM
+  descripcion   String
+  valor         Decimal       @db.Decimal(16, 2)
+  iva           Decimal       @default(0) @db.Decimal(16, 2)
+  saldo         Decimal       @db.Decimal(16, 2)
+  vencimiento   DateTime
+  estado        EstadoCargo   @default(PENDIENTE)
+  createdAt     DateTime      @default(now())
+
+  copropiedad   Copropiedad   @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  unidad        Unidad        @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  concepto      ConceptoCobro @relation(fields: [conceptoId], references: [id])
+  aplicaciones  AplicacionPago[]
+  reserva       Reserva?
+
+  @@index([copropiedadId, periodo])
+  @@index([unidadId, estado])
+}
+
+model Pago {
+  id              String       @id @default(cuid())
+  copropiedadId   String
+  unidadId        String
+  fecha           DateTime     @default(now())
+  valor           Decimal      @db.Decimal(16, 2)
+  // Valor que no se pudo aplicar a cargos: queda como saldo a favor (anticipo)
+  saldoAFavor     Decimal      @default(0) @db.Decimal(16, 2)
+  medio           MedioPago
+  referencia      String?      @unique
+  soporteUrl      String?
+  estado          EstadoPago   @default(PENDIENTE)
+  registradoPorId String?
+  createdAt       DateTime     @default(now())
+
+  copropiedad     Copropiedad  @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  unidad          Unidad       @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  aplicaciones    AplicacionPago[]
+}
+
+model AplicacionPago {
+  id      String  @id @default(cuid())
+  pagoId  String
+  cargoId String
+  valor   Decimal @db.Decimal(16, 2)
+  pago    Pago    @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  cargo   Cargo   @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+}
+
+// Tasa de interés bancario corriente certificada por la Superintendencia Financiera (efectiva anual).
+model TasaInteres {
+  periodo        String   @id // AAAA-MM
+  ibcEfectivaAnual Decimal @db.Decimal(8, 6) // 0.1734 = 17,34 % E.A.
+  createdAt      DateTime @default(now())
+}
+
+model CuentaContable {
+  id            String      @id @default(cuid())
+  copropiedadId String
+  codigo        String
+  nombre        String
+  naturaleza    Naturaleza
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+
+  @@unique([copropiedadId, codigo])
+}
+
+model Asiento {
+  id            String        @id @default(cuid())
+  copropiedadId String
+  numero        Int
+  fecha         DateTime      @default(now())
+  descripcion   String
+  origen        OrigenAsiento
+  origenId      String?
+  createdAt     DateTime      @default(now())
+  copropiedad   Copropiedad   @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  lineas        LineaAsiento[]
+
+  @@unique([copropiedadId, numero])
+  @@index([copropiedadId, origen, origenId])
+}
+
+model LineaAsiento {
+  id           String   @id @default(cuid())
+  asientoId    String
+  cuentaCodigo String
+  unidadId     String?
+  debito       Decimal  @default(0) @db.Decimal(16, 2)
+  credito      Decimal  @default(0) @db.Decimal(16, 2)
+  asiento      Asiento  @relation(fields: [asientoId], references: [id], onDelete: Cascade)
+}
+
+model Comunicado {
+  id            String      @id @default(cuid())
+  copropiedadId String
+  titulo        String
+  cuerpo        String
+  autorId       String
+  createdAt     DateTime    @default(now())
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  autor         Usuario     @relation(fields: [autorId], references: [id])
+  lecturas      LecturaComunicado[]
+}
+
+model LecturaComunicado {
+  id            String     @id @default(cuid())
+  comunicadoId  String
+  usuarioId     String
+  leidoAt       DateTime   @default(now())
+  comunicado    Comunicado @relation(fields: [comunicadoId], references: [id], onDelete: Cascade)
+  usuario       Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([comunicadoId, usuarioId])
+}
+
+model Pqrs {
+  id            String      @id @default(cuid())
+  copropiedadId String
+  radicado      Int
+  tipo          TipoPqrs
+  asunto        String
+  descripcion   String
+  estado        EstadoPqrs  @default(RADICADA)
+  unidadId      String?
+  autorId       String
+  asignadoId    String?
+  respuesta     String?
+  createdAt     DateTime    @default(now())
+  resueltaAt    DateTime?
+
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  unidad        Unidad?     @relation(fields: [unidadId], references: [id])
+  autor         Usuario     @relation("PqrsAutor", fields: [autorId], references: [id])
+  asignado      Usuario?    @relation("PqrsAsignado", fields: [asignadoId], references: [id])
+  comentarios   PqrsComentario[]
+
+  @@unique([copropiedadId, radicado])
+}
+
+model PqrsComentario {
+  id        String   @id @default(cuid())
+  pqrsId    String
+  autorId   String
+  texto     String
+  createdAt DateTime @default(now())
+  pqrs      Pqrs     @relation(fields: [pqrsId], references: [id], onDelete: Cascade)
+  autor     Usuario  @relation(fields: [autorId], references: [id])
+}
+
+model ZonaComun {
+  id                  String      @id @default(cuid())
+  copropiedadId       String
+  nombre              String
+  descripcion         String?
+  capacidad           Int?
+  horaApertura        String      @default("08:00")
+  horaCierre          String      @default("22:00")
+  maxHoras            Int         @default(4)
+  tarifa              Decimal     @default(0) @db.Decimal(16, 2)
+  requiereAprobacion  Boolean     @default(true)
+  activa              Boolean     @default(true)
+  copropiedad         Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+  reservas            Reserva[]
+}
+
+model Reserva {
+  id         String        @id @default(cuid())
+  zonaId     String
+  unidadId   String
+  usuarioId  String
+  inicio     DateTime
+  fin        DateTime
+  estado     EstadoReserva @default(PENDIENTE)
+  nota       String?
+  cargoId    String?       @unique
+  createdAt  DateTime      @default(now())
+  zona       ZonaComun     @relation(fields: [zonaId], references: [id], onDelete: Cascade)
+  unidad     Unidad        @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  usuario    Usuario       @relation(fields: [usuarioId], references: [id])
+  cargo      Cargo?        @relation(fields: [cargoId], references: [id])
+
+  @@index([zonaId, inicio])
+}
+
+model Documento {
+  id            String      @id @default(cuid())
+  copropiedadId String
+  titulo        String
+  categoria     String      @default("General")
+  archivo       String
+  mimeType      String?
+  visibilidad   Visibilidad @default(TODOS)
+  createdAt     DateTime    @default(now())
+  copropiedad   Copropiedad @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+}
+
+model Auditoria {
+  id            String       @id @default(cuid())
+  copropiedadId String?
+  usuarioId     String?
+  accion        String
+  entidad       String
+  entidadId     String?
+  detalle       Json?
+  createdAt     DateTime     @default(now())
+  copropiedad   Copropiedad? @relation(fields: [copropiedadId], references: [id], onDelete: Cascade)
+
+  @@index([copropiedadId, createdAt])
+}

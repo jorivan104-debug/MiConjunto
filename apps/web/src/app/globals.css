@@ -1,0 +1,34 @@
+@import '../../../../packages/design/tokens.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-ink-50 text-ink-900 font-sans antialiased; }
+  h1, h2, h3 { @apply font-display tracking-tight text-brand-navy; }
+  h1 { @apply text-2xl md:text-3xl font-bold; }
+  h2 { @apply text-xl font-semibold; }
+  h3 { @apply text-lg font-semibold; }
+  ::selection { background-color: rgba(31, 102, 209, 0.18); }
+}
+
+@layer components {
+  .pill { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap; }
+  .pill-success { @apply pill bg-brand-green-light text-brand-green-700; }
+  .pill-info { @apply pill bg-brand-blue-light text-brand-blue; }
+  .pill-danger { @apply pill bg-brand-red-light text-brand-red-700; }
+  .pill-warning { @apply pill bg-brand-yellow-light text-brand-yellow-800; }
+  .pill-neutral { @apply pill bg-ink-100 text-ink-600; }
+  .nav-item { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-600 transition-all duration-200 hover:bg-brand-blue-light hover:text-brand-blue; }
+  .nav-item.active { @apply bg-brand-blue-light text-brand-blue shadow-soft; }
+  .tabla { @apply w-full text-sm; }
+  .tabla th { @apply text-left text-xs font-medium uppercase tracking-wide text-ink-500 px-4 py-3 border-b border-ink-200; }
+  .tabla td { @apply px-4 py-3 border-b border-ink-100 align-top; }
+  .tabla tr:last-child td { @apply border-b-0; }
+  .skeleton { @apply relative overflow-hidden bg-ink-100 rounded-xl; background-image: linear-gradient(90deg, #F1F5F9 0%, #E2E8F0 50%, #F1F5F9 100%); background-size: 800px 100%; animation: shimmer 1.5s linear infinite; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}

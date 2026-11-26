@@ -1,0 +1,7 @@
+{
+  "name": "@ph/design",
+  "version": "0.1.0",
+  "private": true,
+  "main": "tailwind.preset.js",
+  "files": ["tokens.css", "tailwind.preset.js", "theme.mobile.ts", "marca"]
+}

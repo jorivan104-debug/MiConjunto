@@ -1,52 +1,39 @@
+# Entorno completo: base de datos, API y web.
+#   docker compose up --build
+#   docker compose exec api npx ts-node prisma/seed.ts   (datos de demostración, opcional)
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
-    container_name: miconjunto-postgres
     environment:
-      POSTGRES_USER: miconjunto
-      POSTGRES_PASSWORD: miconjunto
-      POSTGRES_DB: miconjunto
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      POSTGRES_USER: ph
+      POSTGRES_PASSWORD: ph
+      POSTGRES_DB: ph
+    volumes: [db:/var/lib/postgresql/data]
+    ports: ["5432:5432"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U miconjunto"]
+      test: ["CMD-SHELL", "pg_isready -U ph"]
       interval: 5s
-      timeout: 5s
       retries: 10
 
-  backend:
-    build:
-      context: ./backend
-    container_name: miconjunto-backend
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
     environment:
-      DATABASE_URL: postgresql://miconjunto:miconjunto@postgres:5432/miconjunto
-      APP_ENV: production
-      SECRET_KEY: change-me-in-production-please-use-a-long-random-string
-      BOOTSTRAP_ADMIN_USERNAME: admin
-      BOOTSTRAP_ADMIN_PASSWORD: admin
-      BOOTSTRAP_ADMIN_EMAIL: admin@miconjunto.app
-      CORS_ORIGINS: '["http://localhost:5173","http://localhost"]'
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - backend_uploads:/app/uploads
+      DATABASE_URL: postgresql://ph:ph@db:5432/ph
+      JWT_SECRET: ${JWT_SECRET:-cambia-esta-clave-en-produccion-por-una-larga}
+      CORS_ORIGINS: http://localhost:3000
+      UPLOADS_DIR: /repo/apps/api/uploads
+    volumes: [uploads:/repo/apps/api/uploads]
+    ports: ["4000:4000"]
+    depends_on: { db: { condition: service_healthy } }
 
   web:
     build:
-      context: ./frontend/web
-    container_name: miconjunto-web
-    environment:
-      BACKEND_URL: http://backend:8000
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args: { NEXT_PUBLIC_API_URL: http://localhost:4000/api }
+    ports: ["3000:3000"]
+    depends_on: [api]
 
 volumes:
-  postgres_data:
-  backend_uploads:
+  db:
+  uploads:
