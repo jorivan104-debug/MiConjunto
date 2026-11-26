@@ -46,13 +46,26 @@ export class AuthService {
     const u = await this.prisma.usuario.findUniqueOrThrow({
       where: { id },
       include: {
-        membresias: { include: { copropiedad: { select: { id: true, nombre: true, ciudad: true } } } },
+        membresias: {
+          include: {
+            copropiedad: {
+              select: {
+                id: true,
+                nombre: true,
+                ciudad: true,
+                membresias: { where: { rol: 'ADMINISTRADOR' }, select: { usuario: { select: { nombre: true } } } },
+              },
+            },
+          },
+        },
         vinculos: { where: { hasta: null }, include: { unidad: { include: { torre: true } } } },
       },
     });
-    const copropiedades = new Map<string, { id: string; nombre: string; ciudad: string | null; roles: string[] }>();
+    type Cop = { id: string; nombre: string; ciudad: string | null; administracion: string | null; roles: string[] };
+    const copropiedades = new Map<string, Cop>();
     for (const m of u.membresias) {
-      const c = copropiedades.get(m.copropiedadId) ?? { ...m.copropiedad, roles: [] };
+      const { membresias: admins, ...cop } = m.copropiedad;
+      const c = copropiedades.get(m.copropiedadId) ?? { ...cop, administracion: admins.map((a) => a.usuario.nombre).join(', ') || null, roles: [] };
       c.roles.push(m.rol);
       copropiedades.set(m.copropiedadId, c);
     }

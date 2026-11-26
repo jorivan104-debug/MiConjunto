@@ -9,7 +9,7 @@ export interface Perfil {
   esSuperAdmin: boolean;
   debeCambiarPassword: boolean;
   autorizacionDatos: boolean;
-  copropiedades: { id: string; nombre: string; ciudad: string | null; roles: string[] }[];
+  copropiedades: { id: string; nombre: string; ciudad: string | null; administracion: string | null; roles: string[] }[];
   unidades: { id: string; copropiedadId: string; nombre: string; vinculo: string }[];
 }
 
@@ -18,7 +18,7 @@ interface Ctx {
   cargando: boolean;
   login: (email: string, password: string) => Promise<Perfil>;
   salir: () => void;
-  recargar: () => Promise<void>;
+  recargar: () => Promise<Perfil | null>;
 }
 
 const AuthCtx = createContext<Ctx>(null as unknown as Ctx);
@@ -27,17 +27,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  const recargar = useCallback(async () => {
+  const recargar = useCallback(async (): Promise<Perfil | null> => {
     if (!tokenStore.get()) {
       setPerfil(null);
       setCargando(false);
-      return;
+      return null;
     }
     try {
-      setPerfil(await api<Perfil>('/auth/perfil'));
+      const p = await api<Perfil>('/auth/perfil');
+      setPerfil(p);
+      return p;
     } catch {
       tokenStore.clear();
       setPerfil(null);
+      return null;
     } finally {
       setCargando(false);
     }

@@ -20,6 +20,15 @@ export default function Copropiedades() {
   }, [perfil, cargando, router]);
   if (!perfil) return null;
 
+  type Cop = (typeof perfil.copropiedades)[number];
+  const esGestor = (c: Cop) => perfil.esSuperAdmin || c.roles.some((r) => [...GESTORES, 'PORTERIA'].includes(r));
+  // Solo quien administra (o el superadministrador) da de alta conjuntos nuevos
+  const puedeCrear = perfil.esSuperAdmin || perfil.copropiedades.some((c) => c.roles.includes('ADMINISTRADOR'));
+  const grupos = [
+    { titulo: 'Conjuntos que administras o apoyas', items: perfil.copropiedades.filter(esGestor) },
+    { titulo: 'Donde tienes unidades', items: perfil.copropiedades.filter((c) => !esGestor(c)) },
+  ];
+
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -39,29 +48,34 @@ export default function Copropiedades() {
       </div>
       <Encabezado
         titulo="Tus copropiedades"
-        subtitulo="Elige dónde quieres trabajar"
-        acciones={<Boton icono={<Plus size={16} />} onClick={() => setAbierto(true)}>Nueva copropiedad</Boton>}
+        subtitulo="Elige el conjunto al que quieres entrar"
+        acciones={puedeCrear && <Boton icono={<Plus size={16} />} onClick={() => setAbierto(true)}>Nueva copropiedad</Boton>}
       />
       {perfil.copropiedades.length === 0 ? (
-        <Vacio titulo="Aún no tienes copropiedades" texto="Crea la primera para cargar sus unidades, coeficientes y presupuesto." />
+        <Vacio titulo="Aún no tienes copropiedades" texto={puedeCrear ? 'Crea la primera para cargar sus unidades, coeficientes y presupuesto.' : 'Pide a la administración de tu conjunto que te vincule a tu unidad.'} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {perfil.copropiedades.map((c) => {
-            const gestor = perfil.esSuperAdmin || c.roles.some((r) => [...GESTORES, 'PORTERIA'].includes(r));
-            return (
-              <Link key={c.id} href={gestor ? `/admin/${c.id}` : `/portal/${c.id}`}>
-                <Tarjeta interactiva className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-blue-light text-brand-blue">
-                    <Building2 size={22} />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-brand-navy">{c.nombre}</p>
-                    <p className="text-sm text-ink-500">{c.roles.map((r) => ROLES[r]).join(' · ')}{c.ciudad ? ` · ${c.ciudad}` : ''}</p>
-                  </div>
-                </Tarjeta>
-              </Link>
-            );
-          })}
+        <div className="space-y-8">
+          {grupos.map((g) => g.items.length > 0 && (
+            <section key={g.titulo}>
+              {grupos.filter((x) => x.items.length).length > 1 && <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-500">{g.titulo}</h2>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {g.items.map((c) => (
+                  <Link key={c.id} href={esGestor(c) ? `/admin/${c.id}` : `/portal/${c.id}`}>
+                    <Tarjeta interactiva className="flex items-center gap-4 p-5">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-blue-light text-brand-blue">
+                        <Building2 size={22} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-brand-navy">{c.nombre}</p>
+                        <p className="text-sm text-ink-500">{c.roles.map((r) => ROLES[r]).join(' · ')}{c.ciudad ? ` · ${c.ciudad}` : ''}</p>
+                        {c.administracion && !c.roles.includes('ADMINISTRADOR') && <p className="mt-0.5 text-xs text-ink-500">Administración: {c.administracion}</p>}
+                      </div>
+                    </Tarjeta>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       )}
       <Dialogo abierto={abierto} alCerrar={() => setAbierto(false)} titulo="Nueva copropiedad">

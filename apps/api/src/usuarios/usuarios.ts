@@ -14,6 +14,12 @@ export class MiembroDto {
   @IsEnum(Rol) rol: Rol;
 }
 
+export class TraspasoDto {
+  @IsEmail({}, { message: 'Correo inválido' }) email: string;
+  @IsString() nombre: string;
+  @IsOptional() @IsString() celular?: string;
+}
+
 /** Equipo de la copropiedad: administración, contador, consejo, revisor fiscal y portería. */
 @Injectable()
 export class UsuariosService {
@@ -38,6 +44,37 @@ export class UsuariosService {
       });
       await this.auditoria.registrar({ tx, copropiedadId, usuarioId, accion: 'ASIGNAR_ROL', entidad: 'Usuario', entidadId: usuario.id, detalle: { rol: dto.rol } });
       return { usuarioId: usuario.id, passwordTemporal };
+    });
+  }
+
+  /**
+   * Traspasa la titularidad del conjunto a otro administrador. Los datos (unidades, cartera,
+   * contabilidad, documentos) pertenecen a la copropiedad y no se mueven; solo cambia quién la administra.
+   * Los administradores anteriores pierden ese rol y conservan los demás (por ejemplo, si son propietarios).
+   */
+  async traspasar(copropiedadId: string, usuarioId: string, dto: TraspasoDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const { usuario, passwordTemporal } = await asegurarUsuario(tx, dto);
+      const anteriores = await tx.membresia.findMany({
+        where: { copropiedadId, rol: 'ADMINISTRADOR', usuarioId: { not: usuario.id } },
+        include: { usuario: { select: { id: true, nombre: true, email: true } } },
+      });
+      const yaEs = await tx.membresia.findUnique({
+        where: { usuarioId_copropiedadId_rol: { usuarioId: usuario.id, copropiedadId, rol: 'ADMINISTRADOR' } },
+      });
+      if (yaEs && anteriores.length === 0) throw new BadRequestException('Esa persona ya es la administradora de este conjunto');
+      if (!yaEs) await tx.membresia.create({ data: { usuarioId: usuario.id, copropiedadId, rol: 'ADMINISTRADOR' } });
+      await tx.membresia.deleteMany({ where: { id: { in: anteriores.map((a) => a.id) } } });
+      await this.auditoria.registrar({
+        tx,
+        copropiedadId,
+        usuarioId,
+        accion: 'TRASPASAR_ADMINISTRACION',
+        entidad: 'Copropiedad',
+        entidadId: copropiedadId,
+        detalle: { nuevo: { id: usuario.id, email: usuario.email }, anteriores: anteriores.map((a) => a.usuario) },
+      });
+      return { usuarioId: usuario.id, passwordTemporal, anteriores: anteriores.map((a) => a.usuario.email) };
     });
   }
 
@@ -69,6 +106,11 @@ export class UsuariosController {
   @Post()
   agregar(@Param('copId') copId: string, @Actual() u: UsuarioActual, @Body() dto: MiembroDto) {
     return this.svc.agregar(copId, u.id, dto);
+  }
+
+  @Post('traspaso')
+  traspasar(@Param('copId') copId: string, @Actual() u: UsuarioActual, @Body() dto: TraspasoDto) {
+    return this.svc.traspasar(copId, u.id, dto);
   }
 
   @Delete(':membresiaId')

@@ -10,6 +10,8 @@ import { ContabilidadService } from '../src/contabilidad/contabilidad.service';
 import { CopropiedadesService } from '../src/copropiedades/copropiedades';
 import { PagosService } from '../src/pagos/pagos';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { UsuariosService } from '../src/usuarios/usuarios';
+import { AuthService } from '../src/auth/auth';
 
 describe('ciclo de cobro', () => {
   let app: INestApplicationContext;
@@ -98,5 +100,20 @@ describe('ciclo de cobro', () => {
     expect(ec3.saldo).toBeGreaterThan(0);
     expect(ec3.saldoAFavor).toBe(0);
     await cuadra();
+  });
+
+  it('traspasa la administración sin mover los datos del conjunto', async () => {
+    const correo = `e2e-nuevo-${Date.now()}@prueba.co`;
+    const r = await app.get(UsuariosService).traspasar(copId, adminId, { email: correo, nombre: 'Nueva Administradora' });
+    expect(r.passwordTemporal).toBeTruthy();
+    expect(r.anteriores).toHaveLength(1);
+    const admins = await prisma.membresia.findMany({ where: { copropiedadId: copId, rol: 'ADMINISTRADOR' } });
+    expect(admins.map((a) => a.usuarioId)).toEqual([r.usuarioId]);
+    expect(await prisma.unidad.count({ where: { copropiedadId: copId } })).toBe(3);
+    const perfil = await app.get(AuthService).perfil(r.usuarioId);
+    expect(perfil.copropiedades).toEqual([expect.objectContaining({ id: copId, administracion: 'Nueva Administradora', roles: ['ADMINISTRADOR'] })]);
+    // Devuelve el conjunto para que la limpieza siga funcionando
+    await app.get(UsuariosService).traspasar(copId, r.usuarioId, { email: (await prisma.usuario.findUniqueOrThrow({ where: { id: adminId } })).email, nombre: 'E2E' });
+    await prisma.usuario.delete({ where: { id: r.usuarioId } });
   });
 });

@@ -23,6 +23,7 @@ async function main() {
 
   if (await prisma.copropiedad.findUnique({ where: { nit: '900123456-7' } })) {
     console.log('Los datos de demostración ya existen.');
+    await segundoConjunto(app, prisma);
     await app.close();
     return;
   }
@@ -118,7 +119,40 @@ async function main() {
   console.log('Datos de demostración creados.');
   console.log('  Administrador: admin@miconjunto.app / Admin12345!');
   console.log('  Residente:     residente@demo.co / Demo12345!');
+  await segundoConjunto(app, prisma);
   await app.close();
+}
+
+/**
+ * Segundo conjunto, con otra administración, donde Laura Gómez también tiene un apartamento:
+ * sirve para ver el selector de conjuntos de una persona que pertenece a dos copropiedades.
+ */
+async function segundoConjunto(app: Awaited<ReturnType<typeof NestFactory.createApplicationContext>>, prisma: PrismaService) {
+  if (await prisma.copropiedad.findUnique({ where: { nit: '900765432-1' } })) return;
+  const autorizado = { autorizacionDatosAt: new Date(), autorizacionVersion: VERSION_POLITICA_DATOS };
+  const admin2 = await prisma.usuario.upsert({
+    where: { email: 'admin2@demo.co' },
+    create: { email: 'admin2@demo.co', nombre: 'Andrés Pardo (Administrador)', passwordHash: await bcrypt.hash('Demo12345!', 10), ...autorizado },
+    update: {},
+  });
+  const cop = await app.get(CopropiedadesService).crear(admin2.id, {
+    nit: '900765432-1',
+    nombre: 'Edificio Mirador del Parque',
+    tipo: 'RESIDENCIAL',
+    direccion: 'Carrera 7 # 72-10',
+    ciudad: 'Bogotá',
+  });
+  const numeros = ['101', '102', '201', '202'];
+  const unidades = [];
+  for (const numero of numeros) {
+    unidades.push(await prisma.unidad.create({ data: { copropiedadId: cop.id, numero, areaPrivada: 70, coeficiente: 0.25 } }));
+  }
+  const laura = await prisma.usuario.findUnique({ where: { email: 'residente@demo.co' } });
+  if (laura) {
+    await prisma.membresia.create({ data: { usuarioId: laura.id, copropiedadId: cop.id, rol: 'PROPIETARIO' } });
+    await prisma.unidadPersona.create({ data: { unidadId: unidades[2].id, usuarioId: laura.id, vinculo: 'PROPIETARIO', responsablePago: true } });
+  }
+  console.log('  Segundo conjunto: admin2@demo.co / Demo12345! (Laura Gómez también es propietaria aquí)');
 }
 
 main().catch((e) => {
